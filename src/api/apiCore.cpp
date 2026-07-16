@@ -426,6 +426,27 @@ void TapeCore::tape_entity_set_intensity_texture(const YAML::Node& yamlNode, Pla
 	                                 state.textures.at(yamlNode[1].as<TapeAPIObjectID>()));
 }
 
+RGL_API rgl_status_t rgl_entity_set_color_texture(rgl_entity_t entity, rgl_texture_t texture)
+{
+	auto status = rglSafeCall([&]() {
+		RGL_API_LOG("rgl_entity_set_color_texture(entity={}, texture={})", (void*) entity, (void*) texture);
+		CHECK_ARG(entity != nullptr);
+		CHECK_ARG(texture != nullptr);
+		CHECK_ARG(Texture::validatePtr(texture)->getFormat() == Texture::Format::RGBA8888);
+		GraphRunCtx::synchronizeAll(); // Prevent races with graph threads
+		Entity::validatePtr(entity)->setColorTexture(Texture::validatePtr(texture));
+	});
+
+	TAPE_HOOK(entity, texture);
+	return status;
+}
+
+void TapeCore::tape_entity_set_color_texture(const YAML::Node& yamlNode, PlaybackState& state)
+{
+	rgl_entity_set_color_texture(state.entities.at(yamlNode[0].as<TapeAPIObjectID>()),
+	                             state.textures.at(yamlNode[1].as<TapeAPIObjectID>()));
+}
+
 RGL_API rgl_status_t rgl_entity_set_laser_retro(rgl_entity_t entity, float retro)
 {
 	auto status = rglSafeCall([&]() {
@@ -494,6 +515,32 @@ void TapeCore::tape_texture_create(const YAML::Node& yamlNode, PlaybackState& st
 	rgl_texture_t texture = nullptr;
 
 	rgl_texture_create(&texture, state.getPtr<const void>(yamlNode[1]), yamlNode[2].as<int32_t>(), yamlNode[3].as<int32_t>());
+
+	state.textures.insert(std::make_pair(yamlNode[0].as<TapeAPIObjectID>(), texture));
+}
+
+RGL_API rgl_status_t rgl_texture_create_rgba8888(rgl_texture_t* out_texture, const void* texels, int32_t width,
+                                                 int32_t height)
+{
+	auto status = rglSafeCall([&]() {
+		RGL_API_LOG("rgl_texture_create_rgba8888(out_texture={}, width={}, height={})", (void*) out_texture, width, height);
+		CHECK_ARG(out_texture != nullptr);
+		CHECK_ARG(texels != nullptr);
+		CHECK_ARG(width > 0);
+		CHECK_ARG(height > 0);
+		GraphRunCtx::synchronizeAll(); // Prevent races with graph threads
+		*out_texture = Texture::create(texels, width, height, Texture::Format::RGBA8888).get();
+	});
+	TAPE_HOOK(out_texture, TAPE_ARRAY(texels, (width * height * 4 * sizeof(TextureTexelFormat))), width, height);
+	return status;
+}
+
+void TapeCore::tape_texture_create_rgba8888(const YAML::Node& yamlNode, PlaybackState& state)
+{
+	rgl_texture_t texture = nullptr;
+
+	rgl_texture_create_rgba8888(&texture, state.getPtr<const void>(yamlNode[1]), yamlNode[2].as<int32_t>(),
+	                            yamlNode[3].as<int32_t>());
 
 	state.textures.insert(std::make_pair(yamlNode[0].as<TapeAPIObjectID>(), texture));
 }

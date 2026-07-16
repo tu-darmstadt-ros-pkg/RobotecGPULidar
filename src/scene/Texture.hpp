@@ -21,6 +21,12 @@ struct Texture : APIObject<Texture>
 {
 	friend APIObject<Texture>;
 
+	enum class Format
+	{
+		Intensity8, // Single channel, 8 bits (TextureTexelFormat)
+		RGBA8888,   // Four channels, 8 bits each, R, G, B, A byte order
+	};
+
 	~Texture();
 
 	Vec2i getResolution() const { return resolution; }
@@ -31,9 +37,10 @@ struct Texture : APIObject<Texture>
 
 	cudaTextureObject_t getTextureObject() const { return dTextureObject; }
 
+	Format getFormat() const { return format; }
 
 private:
-	Texture(const void* texels, int width, int height);
+	Texture(const void* texels, int width, int height, Format format = Format::Intensity8);
 
 	Texture(const Texture&) = delete;            // non construction-copyable
 	Texture& operator=(const Texture&) = delete; // non copyable
@@ -43,6 +50,7 @@ private:
 	void cleanup();
 
 	Vec2i resolution{-1};
+	Format format{Format::Intensity8};
 
 	cudaTextureObject_t dTextureObject;
 	cudaArray_t dPixelArray;

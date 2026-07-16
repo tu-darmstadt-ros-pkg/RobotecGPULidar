@@ -36,7 +36,10 @@ extern "C" static __constant__ RaytraceRequestContext ctx;
 __device__ void saveSampleAsNonHit(int sampleIdx, float nonHitDistance);
 __device__ void saveSampleAsHit(int sampleIdx, float distance, float intensity, float laserRetro, int objectID,
                                 const Vec3f& absVelocity, const Vec3f& relVelocity, float radialSpeed, const Vec3f& normal,
-                                float incidentAngle);
+                                float incidentAngle, unsigned colorRGBA);
+
+// Opaque white, used for entities with no color texture assigned (see RGL_FIELD_COLOR_RGBA_U32).
+#define DEFAULT_COLOR_RGBA 0xFFFFFFFFu
 __device__ void saveNonHitBeamSamples(int beamIdx, float nonHitDistance);
 __device__ void saveBeamSharedData(int beamIdx, const Mat3x4f& rayLocal);
 __device__ void shootSamplingRay(const Mat3x4f& ray, float maxRange, unsigned sampleBeamIdx);
@@ -172,9 +175,10 @@ extern "C" __global__ void __closesthit__()
 	const float incidentAngle = acosf(cosIncidentAngle);
 
 	float intensity = ctx.defaultIntensity;
+	unsigned colorRGBA = DEFAULT_COLOR_RGBA;
 	// TODO(Pawel): Check if it is possible to read this only based on mode requested - if any requested
 	// return is strongest or second strongest.
-	if (entityData.textureCoords != nullptr && entityData.texture != 0) {
+	if (entityData.textureCoords != nullptr && (entityData.texture != 0 || entityData.colorTexture != 0)) {
 		assert(triangleIndices.x() < entityData.textureCoordsCount);
 		assert(triangleIndices.y() < entityData.textureCoordsCount);
 		assert(triangleIndices.z() < entityData.textureCoordsCount);
@@ -185,7 +189,15 @@ extern "C" __global__ void __closesthit__()
 
 		Vec2f uv = (1 - u - v) * uvA + u * uvB + v * uvC;
 
-		intensity = tex2D<TextureTexelFormat>(entityData.texture, uv[0], uv[1]);
+		if (entityData.texture != 0) {
+			intensity = tex2D<TextureTexelFormat>(entityData.texture, uv[0], uv[1]);
+		}
+		if (entityData.colorTexture != 0) {
+			const uchar4 texel = tex2D<uchar4>(entityData.colorTexture, uv[0], uv[1]);
+			// Packed as 0xAARRGGBB - see RGL_FIELD_COLOR_RGBA_U32 documentation.
+			colorRGBA = (static_cast<unsigned>(texel.w) << 24) | (static_cast<unsigned>(texel.x) << 16) |
+			            (static_cast<unsigned>(texel.y) << 8) | static_cast<unsigned>(texel.z);
+		}
 	}
 	intensity *= cosIncidentAngle;
 
@@ -235,7 +247,7 @@ extern "C" __global__ void __closesthit__()
 	}
 
 	saveSampleAsHit(mrSampleIdx, distance, intensity, laserRetro, entityId, absPointVelocity, relPointVelocity, radialSpeed,
-	                wNormal, incidentAngle);
+	                wNormal, incidentAngle, colorRGBA);
 }
 
 extern "C" __global__ void __anyhit__() {}
@@ -278,7 +290,7 @@ __device__ void saveSampleAsNonHit(int sampleIdx, float nonHitDistance)
 
 __device__ void saveSampleAsHit(int sampleIdx, float distance, float intensity, float laserRetro, int objectID,
                                 const Vec3f& absVelocity, const Vec3f& relVelocity, float radialSpeed, const Vec3f& normal,
-                                float incidentAngle)
+                                float incidentAngle, unsigned colorRGBA)
 {
 	ctx.mrSamples.isHit[sampleIdx] = true;
 	ctx.mrSamples.distance[sampleIdx] = distance;
@@ -304,6 +316,9 @@ __device__ void saveSampleAsHit(int sampleIdx, float distance, float intensity, 
 	}
 	if (ctx.mrSamples.incidentAngle != nullptr) {
 		ctx.mrSamples.incidentAngle[sampleIdx] = incidentAngle;
+	}
+	if (ctx.mrSamples.colorRGBA != nullptr) {
+		ctx.mrSamples.colorRGBA[sampleIdx] = colorRGBA;
 	}
 }
 

@@ -69,6 +69,12 @@ void Entity::setIntensityTexture(std::shared_ptr<Texture> texture)
 	Scene::instance().requestSBTRebuild();
 }
 
+void Entity::setColorTexture(std::shared_ptr<Texture> texture)
+{
+	colorTexture = texture;
+	Scene::instance().requestSBTRebuild();
+}
+
 std::optional<Mat3x4f> Entity::getPreviousFrameLocalToWorldTransform() const
 {
 	// At the moment of writing, setting Scene time (rgl_scene_set_time) is optional.

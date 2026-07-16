@@ -18,6 +18,7 @@ struct EntitySBTData
 	const Vec2f* textureCoords;
 	size_t textureCoordsCount;
 	cudaTextureObject_t texture;
+	cudaTextureObject_t colorTexture;
 	float laserRetro;
 	int ignoredBySensorId;
 

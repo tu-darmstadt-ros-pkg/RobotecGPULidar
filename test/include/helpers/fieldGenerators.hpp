@@ -93,6 +93,9 @@ static std::function<Field<NORMAL_VEC3_F32>::type(int)> genNormal = [](int i) {
 	double theta = dis(gen), phi = dis(gen);
 	return Vec3f{std::sin(theta) * std::cos(phi), std::sin(theta) * std::sin(phi), std::cos(theta)};
 };
+static std::function<Field<COLOR_RGBA_U32>::type(int)> genColorRGBA = [](int i) {
+	return static_cast<uint32_t>(std::uniform_int_distribution<uint64_t>(0, UINT32_MAX)(randomGenerator));
+};
 static std::function<Field<RAY_POSE_MAT3x4_F32>::type(int)> genRayPose = [](int i) {
 	std::uniform_real_distribution<float> tr(-1, 1);
 	std::uniform_real_distribution<float> rotDeg(-2 * std::numbers::pi, 2 * std::numbers::pi);

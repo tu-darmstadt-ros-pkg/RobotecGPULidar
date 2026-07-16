@@ -451,6 +451,14 @@ typedef enum : int32_t
 	 */
 	RGL_FIELD_REFLECTIVITY_F32,
 
+	/**
+	 * Color of the hit point sampled from the color texture assigned to the entity (see `rgl_entity_set_color_texture`).
+	 * Packed as 0xAARRGGBB (little-endian memory byte order: B, G, R, A), which matches the packing used by
+	 * PCL's PointXYZRGBA and the ROS PointCloud2 "rgb"/"rgba" field convention.
+	 * For entities with no color texture assigned and for non-hit points, opaque white (0xFFFFFFFF) is assigned.
+	 */
+	RGL_FIELD_COLOR_RGBA_U32,
+
 	// Dummy fields
 	RGL_FIELD_PADDING_8 = 1024,
 	RGL_FIELD_PADDING_16,
@@ -692,6 +700,15 @@ RGL_API rgl_status_t rgl_entity_set_ignored_by_sensor(rgl_entity_t entity, int32
 RGL_API rgl_status_t rgl_entity_set_intensity_texture(rgl_entity_t entity, rgl_texture_t texture);
 
 /**
+ * Assign color texture to the given Entity. The assumption is that the Entity can hold only one color texture.
+ * Hit points on this Entity will have the `RGL_FIELD_COLOR_RGBA_U32` point attribute sampled from this texture
+ * at the interpolated texture coordinates of the hit (see `rgl_mesh_set_texture_coords`).
+ * @param entity Entity to modify.
+ * @param texture Texture to assign. Must have been created with `rgl_texture_create_rgba8888`.
+ */
+RGL_API rgl_status_t rgl_entity_set_color_texture(rgl_entity_t entity, rgl_texture_t texture);
+
+/**
  * Set laser retro value for the given Entity.
  * The value can be retrieved from `RGL_FIELD_LASER_RETRO_F32` point cloud field.
  * Default retro for the Entity is zero.
@@ -730,6 +747,18 @@ RGL_API rgl_status_t rgl_entity_is_alive(rgl_entity_t entity, bool* out_alive);
  * @param height Height of the texture. It is not demanded that width == height. Has to be positive.
  */
 RGL_API rgl_status_t rgl_texture_create(rgl_texture_t* out_texture, const void* texels, int32_t width, int32_t height);
+
+/**
+ * Creates a 4-channel (RGBA, 8 bits per channel) Texture.
+ * Intended to be assigned to entities via `rgl_entity_set_color_texture` and sampled into the
+ * `RGL_FIELD_COLOR_RGBA_U32` point attribute.
+ * @param out_texture Handle to the created Texture.
+ * @param texels Pointer to the texture data: rows of texels, 4 bytes per texel in R, G, B, A order.
+ * @param width Width of the texture. Has to be positive.
+ * @param height Height of the texture. It is not demanded that width == height. Has to be positive.
+ */
+RGL_API rgl_status_t rgl_texture_create_rgba8888(rgl_texture_t* out_texture, const void* texels, int32_t width,
+                                                 int32_t height);
 
 /**
  * Informs that the given texture will be no longer used.
