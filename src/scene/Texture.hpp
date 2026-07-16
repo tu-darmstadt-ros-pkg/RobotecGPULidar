@@ -52,6 +52,7 @@ private:
 	Vec2i resolution{-1};
 	Format format{Format::Intensity8};
 
-	cudaTextureObject_t dTextureObject;
-	cudaArray_t dPixelArray;
+	// Value-initialized so cleanup() is well-defined when createTextureObject() throws mid-construction.
+	cudaTextureObject_t dTextureObject{0};
+	cudaArray_t dPixelArray{nullptr};
 };

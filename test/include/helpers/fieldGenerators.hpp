@@ -1,4 +1,5 @@
 #include <RGLFields.hpp>
+#include <limits>
 #include <ranges>
 #include <random>
 #include <numbers>
@@ -94,7 +95,7 @@ static std::function<Field<NORMAL_VEC3_F32>::type(int)> genNormal = [](int i) {
 	return Vec3f{std::sin(theta) * std::cos(phi), std::sin(theta) * std::sin(phi), std::cos(theta)};
 };
 static std::function<Field<COLOR_RGBA_U32>::type(int)> genColorRGBA = [](int i) {
-	return static_cast<uint32_t>(std::uniform_int_distribution<uint64_t>(0, UINT32_MAX)(randomGenerator));
+	return std::uniform_int_distribution<uint32_t>(0, std::numeric_limits<uint32_t>::max())(randomGenerator);
 };
 static std::function<Field<RAY_POSE_MAT3x4_F32>::type(int)> genRayPose = [](int i) {
 	std::uniform_real_distribution<float> tr(-1, 1);
