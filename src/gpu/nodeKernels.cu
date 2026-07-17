@@ -152,6 +152,9 @@ __device__ void saveReturnAsHit(const RaytraceRequestContext* ctx, int beamIdx, 
 	if (ctx->laserRetro != nullptr) {
 		ctx->laserRetro[returnPointIdx] = ctx->mrSamples.laserRetro[sampleIdx];
 	}
+	if (ctx->colorRGBA != nullptr) {
+		ctx->colorRGBA[returnPointIdx] = ctx->mrSamples.colorRGBA[sampleIdx];
+	}
 }
 
 __device__ void saveReturnAsNonHit(const RaytraceRequestContext* ctx, int firstSampleInBeamIdx, int beamIdx, int returnPointIdx,
@@ -210,6 +213,10 @@ __device__ void saveReturnAsNonHit(const RaytraceRequestContext* ctx, int firstS
 	}
 	if (ctx->laserRetro != nullptr) {
 		ctx->laserRetro[returnPointIdx] = 0;
+	}
+	if (ctx->colorRGBA != nullptr) {
+		// Opaque white, consistent with the no-color-texture default (see RGL_FIELD_COLOR_RGBA_U32).
+		ctx->colorRGBA[returnPointIdx] = 0xFFFFFFFFu;
 	}
 }
 

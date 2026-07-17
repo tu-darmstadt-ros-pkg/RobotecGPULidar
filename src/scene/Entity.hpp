@@ -66,6 +66,11 @@ struct Entity : APIObject<Entity>
 	void setIntensityTexture(std::shared_ptr<Texture> texture);
 
 	/**
+	 * Sets color texture that will be used as a point attribute COLOR_RGBA_U32 when a ray hits this entity.
+	 */
+	void setColorTexture(std::shared_ptr<Texture> texture);
+
+	/**
 	 * Sets laser retro that will be used as a point attribute LASER_RETRO_F32 when a ray hits this entity.
 	 */
 	void setLaserRetro(float retro);
@@ -139,6 +144,7 @@ private:
 
 	std::shared_ptr<Mesh> mesh{};
 	std::shared_ptr<Texture> intensityTexture{};
+	std::shared_ptr<Texture> colorTexture{};
 
 	std::variant<std::monostate, ExternalAnimator, SkeletonAnimator> animator = std::monostate();
 	std::optional<Time> currentAnimationTime;

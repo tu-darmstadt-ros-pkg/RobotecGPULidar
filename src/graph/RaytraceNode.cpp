@@ -133,6 +133,7 @@ void RaytraceNode::enqueueExecImpl()
 	    .elevation = getPtrTo<ELEVATION_F32>(),
 	    .normal = getPtrTo<NORMAL_VEC3_F32>(),
 	    .incidentAngle = getPtrTo<INCIDENT_ANGLE_F32>(),
+	    .colorRGBA = getPtrTo<COLOR_RGBA_U32>(),
 	    .mrSamples = mrSampleData.getPointers(),
 	    .returnCount = static_cast<int>(returnCount),
 	    .hBeamHalfDivergenceRad = hBeamHalfDivergenceRad,

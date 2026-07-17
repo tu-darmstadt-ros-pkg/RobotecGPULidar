@@ -308,6 +308,7 @@ private:
 		{NORMAL_VEC3_F32, [&](std::size_t count) {setFieldValues<NORMAL_VEC3_F32>(generateFieldValues(count, genNormal));}},
 		{INCIDENT_ANGLE_F32, [&](std::size_t count) {setFieldValues<INCIDENT_ANGLE_F32>(generateFieldValues(count, genIncidentAngle));}},
 		{RAY_POSE_MAT3x4_F32, [&](std::size_t count) {setFieldValues<RAY_POSE_MAT3x4_F32>(generateFieldValues(count, genRayPose));}},
+		{COLOR_RGBA_U32, [&](std::size_t count) {setFieldValues<COLOR_RGBA_U32>(generateFieldValues(count, genColorRGBA));}},
 	};
 	// clang-format on
 

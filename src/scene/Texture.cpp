@@ -18,8 +18,8 @@
 
 API_OBJECT_INSTANCE(Texture);
 
-Texture::Texture(const void* texels, int width, int height)
-try : resolution(width, height) {
+Texture::Texture(const void* texels, int width, int height, Format format)
+try : resolution(width, height), format(format) {
 	createTextureObject(texels, width, height);
 }
 catch (...) {
@@ -31,9 +31,10 @@ void Texture::createTextureObject(const void* texels, int width, int height)
 {
 	cudaResourceDesc res_desc = {};
 
-	int32_t numComponents = 1;
+	int32_t numComponents = format == Format::RGBA8888 ? 4 : 1;
 
-	cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc<TextureTexelFormat>();
+	cudaChannelFormatDesc channel_desc = format == Format::RGBA8888 ? cudaCreateChannelDesc<uchar4>() :
+	                                                                  cudaCreateChannelDesc<TextureTexelFormat>();
 
 	int32_t pitch = width * numComponents * sizeof(TextureTexelFormat);
 

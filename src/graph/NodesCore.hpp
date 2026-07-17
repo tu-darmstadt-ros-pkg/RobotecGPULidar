@@ -177,6 +177,7 @@ private:
 			radialSpeed = inFieldData.contains(RADIAL_SPEED_F32) ? DeviceAsyncArray<Field<RADIAL_SPEED_F32>::type>::create(arrayMgr) : nullptr;
 			normal = inFieldData.contains(NORMAL_VEC3_F32) ? DeviceAsyncArray<Field<NORMAL_VEC3_F32>::type>::create(arrayMgr) : nullptr;
 			incidentAngle = inFieldData.contains(INCIDENT_ANGLE_F32) ? DeviceAsyncArray<Field<INCIDENT_ANGLE_F32>::type>::create(arrayMgr) : nullptr;
+			colorRGBA = inFieldData.contains(COLOR_RGBA_U32) ? DeviceAsyncArray<Field<COLOR_RGBA_U32>::type>::create(arrayMgr) : nullptr;
 			// clang-format on
 		}
 
@@ -192,6 +193,7 @@ private:
 			resizeField(radialSpeed, size);
 			resizeField(normal, size);
 			resizeField(incidentAngle, size);
+			resizeField(colorRGBA, size);
 		}
 
 		MultiReturnSamplesPointers getPointers() const
@@ -208,7 +210,8 @@ private:
 					.relVelocity = relVelocity ? relVelocity->getWritePtr() : nullptr,
 					.radialSpeed = radialSpeed ? radialSpeed->getWritePtr() : nullptr,
 					.normal = normal ? normal->getWritePtr() : nullptr,
-					.incidentAngle = incidentAngle ? incidentAngle->getWritePtr() : nullptr
+					.incidentAngle = incidentAngle ? incidentAngle->getWritePtr() : nullptr,
+					.colorRGBA = colorRGBA ? colorRGBA->getWritePtr() : nullptr
 			    // clang-format on
 			};
 		}
@@ -234,6 +237,7 @@ private:
 		DeviceAsyncArray<Field<RADIAL_SPEED_F32>::type>::Ptr radialSpeed;
 		DeviceAsyncArray<Field<NORMAL_VEC3_F32>::type>::Ptr normal;
 		DeviceAsyncArray<Field<INCIDENT_ANGLE_F32>::type>::Ptr incidentAngle;
+		DeviceAsyncArray<Field<COLOR_RGBA_U32>::type>::Ptr colorRGBA;
 	};
 
 	IRaysNode::Ptr raysNode;

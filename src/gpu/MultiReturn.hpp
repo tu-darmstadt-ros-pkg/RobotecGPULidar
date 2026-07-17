@@ -34,4 +34,5 @@ struct MultiReturnSamplesPointers
 	Field<RADIAL_SPEED_F32>::type* radialSpeed;
 	Field<NORMAL_VEC3_F32>::type* normal;
 	Field<INCIDENT_ANGLE_F32>::type* incidentAngle;
+	Field<COLOR_RGBA_U32>::type* colorRGBA;
 };
