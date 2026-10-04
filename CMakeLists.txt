@@ -123,6 +123,7 @@ set(RGL_SOURCE_FILES
     src/graph/GaussianNoiseAngularHitpointNode.cpp
     src/graph/GaussianNoiseAngularRayNode.cpp
     src/graph/GaussianNoiseDistanceNode.cpp
+    src/graph/GaussianNoiseRayDirectionNode.cpp
     src/graph/CompactByFieldPointsNode.cpp
     src/graph/FormatPointsNode.cpp
     src/graph/RaytraceNode.cpp
@@ -131,6 +132,7 @@ set(RGL_SOURCE_FILES
     src/graph/FromArrayPointsNode.cpp
     src/graph/FromMat3x4fRaysNode.cpp
     src/graph/FilterGroundPointsNode.cpp
+    src/graph/StereoOcclusionPointsNode.cpp
     src/graph/RadarPostprocessPointsNode.cpp
     src/graph/RadarTrackObjectsNode.cpp
     src/graph/SetRangeRaysNode.cpp

@@ -49,6 +49,14 @@ void gpuFilter(cudaStream_t, size_t count, const Field<RAY_IDX_U32>::type* indic
 void gpuFilterGroundPoints(cudaStream_t stream, size_t pointCount, const Vec3f sensor_up_axis, float ground_angle_threshold,
                            const Field<XYZ_VEC3_F32>::type* inPoints, const Field<NORMAL_VEC3_F32>::type* inNormalsPtr,
                            Field<IS_GROUND_I32>::type* outNonGround, Mat3x4f lidarTransform);
+void gpuFindStereoUnseenPoints(cudaStream_t stream, size_t rowCount, int width, float focalBaseline,
+                               bool secondTowardsHigherColumns, Vec3f opticalAxis, Mat3x4f lookAtOriginTransform,
+                               const Field<XYZ_VEC3_F32>::type* inPoints, const Field<IS_HIT_I32>::type* inIsHit,
+                               int8_t* outUnseen);
+void gpuRemoveStereoUnseenPoints(cudaStream_t stream, size_t pointCount, int width, int matchingBand, const int8_t* inUnseen,
+                                 const Field<XYZ_VEC3_F32>::type* inPoints, const Field<DISTANCE_F32>::type* inDistances,
+                                 const Field<IS_HIT_I32>::type* inIsHit, Field<XYZ_VEC3_F32>::type* outPoints,
+                                 Field<DISTANCE_F32>::type* outDistances, Field<IS_HIT_I32>::type* outIsHit);
 void gpuRadarComputeEnergy(cudaStream_t stream, size_t count, float rayAzimuthStepRad, float rayElevationStepRad, float freq,
                            Mat3x4f lookAtOriginTransform, const Field<RAY_POSE_MAT3x4_F32>::type* rayPose,
                            const Field<DISTANCE_F32>::type* hitDist, const Field<NORMAL_VEC3_F32>::type* hitNorm,

@@ -295,7 +295,8 @@ TEST_F(DistanceFieldTest, should_change_distance_when_gaussian_distance_noise_co
 	disconnectNodes(false);
 
 	// Add gaussian noise to the distance
-	ASSERT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&gaussianNoiseNode, MEAN, 0.0f, 0.0f));
+	ASSERT_RGL_SUCCESS(
+	    rgl_node_gaussian_noise_distance(&gaussianNoiseNode, MEAN, 0.0f, 0.0f, 0.0f, static_cast<float>(M_PI_2)));
 	connectNodes(true);
 
 	getResults();
@@ -312,7 +313,8 @@ TEST_F(DistanceFieldTest, should_change_distance_when_gaussian_distance_noise_co
 
 	rayTf.assign(LIDAR_RAYS_COUNT, Mat3x4f::identity().toRGL());
 
-	ASSERT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&gaussianNoiseNode, MEAN, STD_DEV, STD_DEV_PER_METER));
+	ASSERT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&gaussianNoiseNode, MEAN, STD_DEV, STD_DEV_PER_METER, 0.0f,
+	                                                    static_cast<float>(M_PI_2)));
 	prepareNodes({0.0f, cubeZDistance + 10.0f});
 	connectNodes(true);
 

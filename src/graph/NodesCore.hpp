@@ -581,21 +581,26 @@ struct GaussianNoiseDistanceNode : IPointsNodeSingleInput
 {
 	using Ptr = std::shared_ptr<GaussianNoiseDistanceNode>;
 
-	void setParameters(float mean, float stDevBase, float stDevRisePerMeter);
+	void setParameters(float mean, float stDevBase, float stDevRisePerMeter, float stDevRisePerMeterSquared,
+	                   float maxIncidenceAngle);
 
 	// Node
 	void enqueueExecImpl() override;
 
 	// Node requirements
-	std::vector<rgl_field_t> getRequiredFieldList() const override { return {XYZ_VEC3_F32, DISTANCE_F32}; };
+	std::vector<rgl_field_t> getRequiredFieldList() const override;
 
 	// Data getters
 	IAnyArray::ConstPtr getFieldData(rgl_field_t field) override;
 
 private:
+	bool dependsOnIncidentAngle() const { return maxIncidenceAngle < static_cast<float>(M_PI_2); }
+
 	float mean;
 	float stDevBase;
 	float stDevRisePerMeter;
+	float stDevRisePerMeterSquared;
+	float maxIncidenceAngle;
 	std::random_device randomDevice;
 
 	DeviceAsyncArray<curandStatePhilox4_32_10_t>::Ptr randomizationStates =
@@ -603,6 +608,57 @@ private:
 	DeviceAsyncArray<Field<XYZ_VEC3_F32>::type>::Ptr outXyz = DeviceAsyncArray<Field<XYZ_VEC3_F32>::type>::create(arrayMgr);
 	DeviceAsyncArray<Field<DISTANCE_F32>::type>::Ptr outDistance = DeviceAsyncArray<Field<DISTANCE_F32>::type>::create(
 	    arrayMgr);
+	DeviceAsyncArray<Field<IS_HIT_I32>::type>::Ptr outIsHit = DeviceAsyncArray<Field<IS_HIT_I32>::type>::create(arrayMgr);
+};
+
+struct GaussianNoiseRayDirectionNode : IRaysNodeSingleInput
+{
+	using Ptr = std::shared_ptr<GaussianNoiseRayDirectionNode>;
+
+	void setParameters(float stDev);
+
+	// Node
+	void enqueueExecImpl() override;
+
+	// Data getters
+	Array<Mat3x4f>::ConstPtr getRays() const override { return rays; }
+
+private:
+	float stDev;
+	std::random_device randomDevice;
+
+	DeviceAsyncArray<curandStatePhilox4_32_10_t>::Ptr randomizationStates =
+	    DeviceAsyncArray<curandStatePhilox4_32_10_t>::create(arrayMgr);
+	DeviceAsyncArray<Mat3x4f>::Ptr rays = DeviceAsyncArray<Mat3x4f>::create(arrayMgr);
+};
+
+struct StereoOcclusionPointsNode : IPointsNodeSingleInput
+{
+	using Ptr = std::shared_ptr<StereoOcclusionPointsNode>;
+
+	void setParameters(int32_t width, float focalLength, float baseline, const Vec3f& opticalAxis, int32_t matchingBand);
+
+	// Node
+	void enqueueExecImpl() override;
+
+	// Node requirements
+	std::vector<rgl_field_t> getRequiredFieldList() const override { return {XYZ_VEC3_F32, DISTANCE_F32, IS_HIT_I32}; }
+
+	// Data getters
+	IAnyArray::ConstPtr getFieldData(rgl_field_t field) override;
+
+private:
+	int32_t width;
+	float focalLength;
+	float baseline;
+	Vec3f opticalAxis;
+	int32_t matchingBand;
+
+	DeviceAsyncArray<int8_t>::Ptr unseen = DeviceAsyncArray<int8_t>::create(arrayMgr);
+	DeviceAsyncArray<Field<XYZ_VEC3_F32>::type>::Ptr outXyz = DeviceAsyncArray<Field<XYZ_VEC3_F32>::type>::create(arrayMgr);
+	DeviceAsyncArray<Field<DISTANCE_F32>::type>::Ptr outDistance = DeviceAsyncArray<Field<DISTANCE_F32>::type>::create(
+	    arrayMgr);
+	DeviceAsyncArray<Field<IS_HIT_I32>::type>::Ptr outIsHit = DeviceAsyncArray<Field<IS_HIT_I32>::type>::create(arrayMgr);
 };
 
 struct RadarPostprocessPointsNode : IPointsNodeSingleInput
