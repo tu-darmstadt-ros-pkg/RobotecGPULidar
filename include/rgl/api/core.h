@@ -1140,6 +1140,26 @@ RGL_API rgl_status_t rgl_node_points_filter_ground(rgl_node_t* node, const rgl_v
                                                    float ground_angle_threshold);
 
 /**
+ * Creates or modifies StereoOcclusionPointsNode.
+ * Turns a depth camera's view into what an active stereo camera can measure: points that the second camera does not
+ * see, and points within matching_band pixels of them, become non-hits with NaN position and distance.
+ * The input holds one point per pixel, in rows of `width` pixels (e.g. the raytrace result of a camera's rays, before
+ * compaction). The cameras are rectified: the second one is displaced by `baseline` along the image rows.
+ * Note: affects on RGL_FIELD_XYZ_VEC3_F32, RGL_FIELD_DISTANCE_F32 and RGL_FIELD_IS_HIT_I32.
+ * Graph input: point cloud
+ * Graph output: point cloud
+ * @param node If (*node) == nullptr, a new Node will be created. Otherwise, (*node) will be modified.
+ * @param width Pixels per image row.
+ * @param focal_length Focal length in pixels.
+ * @param baseline Distance between the cameras in meters; positive when the second camera lies towards increasing
+ * column index.
+ * @param optical_axis Viewing direction in the sensor frame (the frame the rays are given in).
+ * @param matching_band Pixels around an unseen point that fail to match as well.
+ */
+RGL_API rgl_status_t rgl_node_points_stereo_occlusion(rgl_node_t* node, int32_t width, float focal_length, float baseline,
+                                                      const rgl_vec3f* optical_axis, int32_t matching_band);
+
+/**
  * Creates or modifies GaussianNoiseAngularRaysNode.
  * Applies angular noise to the rays before raycasting.
  * See documentation: https://github.com/RobotecAI/RobotecGPULidar/blob/main/docs/GaussianNoise.md#ray-based-angular-noise
@@ -1172,7 +1192,11 @@ RGL_API rgl_status_t rgl_node_gaussian_noise_angular_hitpoint(rgl_node_t* node, 
 /**
  * Creates or modifies GaussianNoiseDistanceNode.
  * Changes the distance between the hitpoint and the lidar's origin.
- * Note: affects on RGL_FIELD_XYZ_VEC3_F32 and RGL_DISTANCE_F32.
+ * The standard deviation at distance d is st_dev_base + st_dev_rise_per_meter * d + st_dev_rise_per_meter_squared * d^2.
+ * With max_incidence_angle below pi/2 it also depends on the incident angle a (between the ray and the surface normal):
+ * it is divided by cos(a), and hits with a above max_incidence_angle become non-hits.
+ * Non-hits keep their values; points that become non-hits get NaN position and distance.
+ * Note: affects on RGL_FIELD_XYZ_VEC3_F32, RGL_FIELD_DISTANCE_F32 and RGL_FIELD_IS_HIT_I32.
  * Should be used after the raytrace Node.
  * Using this noise after Nodes that modify XYZ (e.g. points_transform, points_downsample) may cause incorrect values in fields other than RGL_FIELD_XYZ_VEC3_F32.
  * See documentation: https://github.com/RobotecAI/RobotecGPULidar/blob/main/docs/GaussianNoise.md#distance-noise
@@ -1182,9 +1206,24 @@ RGL_API rgl_status_t rgl_node_gaussian_noise_angular_hitpoint(rgl_node_t* node, 
  * @param mean Distance noise mean in meters.
  * @param st_dev_base Distance noise standard deviation base in meters.
  * @param st_dev_rise_per_meter Distance noise standard deviation rise per meter.
+ * @param st_dev_rise_per_meter_squared Distance noise standard deviation rise per squared meter, in 1/m.
+ * @param max_incidence_angle Largest incident angle that returns a hit, in radians, in (0, pi/2]; pi/2 makes the noise
+ * independent of the angle.
  */
 RGL_API rgl_status_t rgl_node_gaussian_noise_distance(rgl_node_t* node, float mean, float st_dev_base,
-                                                      float st_dev_rise_per_meter);
+                                                      float st_dev_rise_per_meter, float st_dev_rise_per_meter_squared,
+                                                      float max_incidence_angle);
+
+/**
+ * Creates or modifies GaussianNoiseRayDirectionNode.
+ * Tilts each ray's direction by a random angle: its components about the two axes across the ray (the ray's x and y;
+ * a ray points along its z) are independent and normal with zero mean.
+ * Graph input: rays
+ * Graph output: rays
+ * @param node If (*node) == nullptr, a new Node will be created. Otherwise, (*node) will be modified.
+ * @param st_dev Standard deviation of each component in radians.
+ */
+RGL_API rgl_status_t rgl_node_gaussian_noise_ray_direction(rgl_node_t* node, float st_dev);
 
 /**
  * Assigns value true to out_alive if the given node is known and has not been destroyed,

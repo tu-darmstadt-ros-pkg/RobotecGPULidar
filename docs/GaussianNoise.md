@@ -43,6 +43,18 @@ Create `GaussianNoiseAngularRaysNode` using API call `rgl_node_gaussian_noise_an
 | `st_dev` | `float` | Angular noise standard deviation in radians |
 | `axis` | `rgl_axis_t` | Axis on which angular noise will be performed |
 
+## Ray direction noise
+
+This noise tilts each ray before raycasting by a random angle across its direction: the components about the ray's own x and y axes (a ray points along its z) are independent and normal with zero mean. Unlike the ray-based angular noise, which rotates rays about one axis of the sensor frame, it acts on every ray alike, whichever way it points.
+
+### Usage
+
+Create `GaussianNoiseRayDirectionNode` using API call `rgl_node_gaussian_noise_ray_direction`. Next, add this node to the RGL pipeline before `RaytraceNode`.
+
+| Parameter name | Type | Description |
+|----------------|------|-------------|
+| `st_dev` | `float` | Standard deviation of each component in radians |
+
 ## Hitpoint-based angular noise
 
 This type of noise adds angular noise to already computed hitpoints.
@@ -70,7 +82,7 @@ Create `GaussianNoiseAngularHitpointNode` using API call `rgl_node_gaussian_nois
 
 This noise changes the distance between the hitpoint and the lidar's origin.
 
-Standard deviation can depend (increase linearly) on the point's distance from the sensor origin.
+Standard deviation can depend on the point's distance from the sensor origin, linearly and with its square, and on the incident angle `a` between the ray and the surface normal.
 
 The overall standard deviation of the distance error is computed as follows:
 
@@ -101,3 +113,7 @@ Create `GaussianNoiseDistanceNode` using API call `rgl_node_gaussian_noise_dista
 | `mean` | `float` | Distance noise mean in meters |
 | `st_dev_base` | `float` | Distance noise standard deviation base in meters. Represented as ![sigma_base](image/distance_noise_sigma_base.gif) in the [Distance noise](#distance-noise) chapter |
 | `st_dev_rise_per_meter` | `float` | Distance noise standard deviation rise per meter. Represented as ![sigma_slope](image/distance_noise_sigma_slope.gif) in the [Distance noise](#distance-noise) chapter |
+| `st_dev_rise_per_meter_squared` | `float` | Distance noise standard deviation rise per squared meter, in 1/m: adds `st_dev_rise_per_meter_squared * d^2` to the standard deviation |
+| `max_incidence_angle` | `float` | Largest incident angle, in radians, in (0, pi/2], that returns a hit. Below pi/2 the standard deviation is divided by `cos(a)` and hits with a larger angle become non-hits (NaN position and distance). `pi/2` makes the noise independent of the angle |
+
+Non-hits pass the node unchanged.

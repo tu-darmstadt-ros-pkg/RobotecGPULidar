@@ -16,11 +16,22 @@
 #include <gpu/gaussianNoiseKernels.hpp>
 #include <gpu/helpersKernels.hpp>
 
-void GaussianNoiseDistanceNode::setParameters(float mean, float stDevBase, float stDevRisePerMeter)
+void GaussianNoiseDistanceNode::setParameters(float mean, float stDevBase, float stDevRisePerMeter,
+                                              float stDevRisePerMeterSquared, float maxIncidenceAngle)
 {
 	this->mean = mean;
 	this->stDevBase = stDevBase;
 	this->stDevRisePerMeter = stDevRisePerMeter;
+	this->stDevRisePerMeterSquared = stDevRisePerMeterSquared;
+	this->maxIncidenceAngle = maxIncidenceAngle;
+}
+
+std::vector<rgl_field_t> GaussianNoiseDistanceNode::getRequiredFieldList() const
+{
+	if (dependsOnIncidentAngle()) {
+		return {XYZ_VEC3_F32, DISTANCE_F32, IS_HIT_I32, INCIDENT_ANGLE_F32};
+	}
+	return {XYZ_VEC3_F32, DISTANCE_F32, IS_HIT_I32};
 }
 
 void GaussianNoiseDistanceNode::enqueueExecImpl()
@@ -28,6 +39,7 @@ void GaussianNoiseDistanceNode::enqueueExecImpl()
 	auto pointCount = input->getPointCount();
 	outXyz->resize(pointCount, false, false);
 	outDistance->resize(pointCount, false, false);
+	outIsHit->resize(pointCount, false, false);
 
 	if (randomizationStates->getCount() < pointCount) {
 		randomizationStates->resize(pointCount, false, false);
@@ -36,11 +48,16 @@ void GaussianNoiseDistanceNode::enqueueExecImpl()
 
 	const auto* inXyzPtr = input->getFieldDataTyped<XYZ_VEC3_F32>()->asSubclass<DeviceAsyncArray>()->getReadPtr();
 	const auto* inDistancePtr = input->getFieldDataTyped<DISTANCE_F32>()->asSubclass<DeviceAsyncArray>()->getReadPtr();
-	auto* outXyzPtr = outXyz->getWritePtr();
-	auto* outDistancePtr = outDistance->getWritePtr();
+	const auto* inIsHitPtr = input->getFieldDataTyped<IS_HIT_I32>()->asSubclass<DeviceAsyncArray>()->getReadPtr();
+	const Field<INCIDENT_ANGLE_F32>::type* inIncidentAnglePtr = nullptr;
+	if (dependsOnIncidentAngle()) {
+		inIncidentAnglePtr = input->getFieldDataTyped<INCIDENT_ANGLE_F32>()->asSubclass<DeviceAsyncArray>()->getReadPtr();
+	}
 	auto* randPtr = randomizationStates->getWritePtr();
-	gpuAddGaussianNoiseDistance(getStreamHandle(), pointCount, mean, stDevBase, stDevRisePerMeter,
-	                            input->getLookAtOriginTransform(), randPtr, inXyzPtr, inDistancePtr, outXyzPtr, outDistancePtr);
+	gpuAddGaussianNoiseDistance(getStreamHandle(), pointCount, mean, stDevBase, stDevRisePerMeter, stDevRisePerMeterSquared,
+	                            maxIncidenceAngle, input->getLookAtOriginTransform(), randPtr, inXyzPtr, inDistancePtr,
+	                            inIsHitPtr, inIncidentAnglePtr, outXyz->getWritePtr(), outDistance->getWritePtr(),
+	                            outIsHit->getWritePtr());
 }
 
 IAnyArray::ConstPtr GaussianNoiseDistanceNode::getFieldData(rgl_field_t field)
@@ -50,6 +67,9 @@ IAnyArray::ConstPtr GaussianNoiseDistanceNode::getFieldData(rgl_field_t field)
 	}
 	if (field == DISTANCE_F32) {
 		return outDistance;
+	}
+	if (field == IS_HIT_I32) {
+		return outIsHit;
 	}
 	return input->getFieldData(field);
 }

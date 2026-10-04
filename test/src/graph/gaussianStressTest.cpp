@@ -72,7 +72,8 @@ struct GaussianStressTest : public RGLTest
 
 TEST_F(GaussianStressTest, GaussianNoiseDistance)
 {
-	EXPECT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&noise, MEAN, STD_DEV, STD_DEV_PER_METER));
+	EXPECT_RGL_SUCCESS(
+	    rgl_node_gaussian_noise_distance(&noise, MEAN, STD_DEV, STD_DEV_PER_METER, 0.0f, static_cast<float>(M_PI_2)));
 
 	// Connect nodes into graph
 	EXPECT_RGL_SUCCESS(rgl_graph_node_add_child(useRays, lidarPose));

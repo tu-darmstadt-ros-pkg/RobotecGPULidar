@@ -328,7 +328,7 @@ TEST_F(TapeTest, RecordPlayAllCalls)
 	EXPECT_RGL_SUCCESS(rgl_node_gaussian_noise_angular_hitpoint(&noiseAngularHitpoint, 0.1f, 0.1f, RGL_AXIS_X));
 
 	rgl_node_t noiseDistance = nullptr;
-	EXPECT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&noiseDistance, 0.1f, 0.1f, 0.01f));
+	EXPECT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&noiseDistance, 0.1f, 0.1f, 0.01f, 0.0f, static_cast<float>(M_PI_2)));
 
 	EXPECT_RGL_SUCCESS(rgl_graph_node_add_child(useRays, setTimeOffsets));
 	EXPECT_RGL_SUCCESS(rgl_graph_node_add_child(setTimeOffsets, setRange));

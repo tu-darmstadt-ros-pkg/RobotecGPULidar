@@ -1475,6 +1475,36 @@ void TapeCore::tape_node_points_filter_ground(const YAML::Node& yamlNode, Playba
 	state.nodes.insert({nodeId, node});
 }
 
+RGL_API rgl_status_t rgl_node_points_stereo_occlusion(rgl_node_t* node, int32_t width, float focal_length, float baseline,
+                                                      const rgl_vec3f* optical_axis, int32_t matching_band)
+{
+	auto status = rglSafeCall([&]() {
+		RGL_API_LOG("rgl_node_points_stereo_occlusion(node={}, width={}, focal_length={}, baseline={}, optical_axis={}, "
+		            "matching_band={})",
+		            repr(node), width, focal_length, baseline, repr(optical_axis, 1), matching_band);
+		CHECK_ARG(node != nullptr);
+		CHECK_ARG(width > 0);
+		CHECK_ARG(focal_length > 0);
+		CHECK_ARG(optical_axis != nullptr);
+		CHECK_ARG(matching_band >= 0);
+		const auto axis = *reinterpret_cast<const Vec3f*>(optical_axis);
+		CHECK_ARG(axis.length() > 0);
+
+		createOrUpdateNode<StereoOcclusionPointsNode>(node, width, focal_length, baseline, axis, matching_band);
+	});
+	TAPE_HOOK(node, width, focal_length, baseline, optical_axis, matching_band);
+	return status;
+}
+
+void TapeCore::tape_node_points_stereo_occlusion(const YAML::Node& yamlNode, PlaybackState& state)
+{
+	auto nodeId = yamlNode[0].as<TapeAPIObjectID>();
+	rgl_node_t node = state.nodes.contains(nodeId) ? state.nodes.at(nodeId) : nullptr;
+	rgl_node_points_stereo_occlusion(&node, yamlNode[1].as<int32_t>(), yamlNode[2].as<float>(), yamlNode[3].as<float>(),
+	                                 state.getPtr<const rgl_vec3f>(yamlNode[4]), yamlNode[5].as<int32_t>());
+	state.nodes.insert({nodeId, node});
+}
+
 RGL_API rgl_status_t rgl_node_gaussian_noise_angular_ray(rgl_node_t* node, float mean, float st_dev, rgl_axis_t rotation_axis)
 {
 	auto status = rglSafeCall([&]() {
@@ -1525,18 +1555,23 @@ void TapeCore::tape_node_gaussian_noise_angular_hitpoint(const YAML::Node& yamlN
 }
 
 RGL_API rgl_status_t rgl_node_gaussian_noise_distance(rgl_node_t* node, float mean, float st_dev_base,
-                                                      float st_dev_rise_per_meter)
+                                                      float st_dev_rise_per_meter, float st_dev_rise_per_meter_squared,
+                                                      float max_incidence_angle)
 {
 	auto status = rglSafeCall([&]() {
-		RGL_API_LOG("rgl_node_gaussian_noise_distance(node={}, mean={}, st_dev_base={}, st_dev_rise_per_meter={})", repr(node),
-		            mean, st_dev_base, st_dev_rise_per_meter);
+		RGL_API_LOG("rgl_node_gaussian_noise_distance(node={}, mean={}, st_dev_base={}, st_dev_rise_per_meter={}, "
+		            "st_dev_rise_per_meter_squared={}, max_incidence_angle={})",
+		            repr(node), mean, st_dev_base, st_dev_rise_per_meter, st_dev_rise_per_meter_squared, max_incidence_angle);
 		CHECK_ARG(node != nullptr);
 		CHECK_ARG(st_dev_base >= 0);
 		CHECK_ARG(st_dev_rise_per_meter >= 0);
+		CHECK_ARG(st_dev_rise_per_meter_squared >= 0);
+		CHECK_ARG(max_incidence_angle > 0 && max_incidence_angle <= static_cast<float>(M_PI_2));
 
-		createOrUpdateNode<GaussianNoiseDistanceNode>(node, mean, st_dev_base, st_dev_rise_per_meter);
+		createOrUpdateNode<GaussianNoiseDistanceNode>(node, mean, st_dev_base, st_dev_rise_per_meter,
+		                                              st_dev_rise_per_meter_squared, max_incidence_angle);
 	});
-	TAPE_HOOK(node, mean, st_dev_base, st_dev_rise_per_meter);
+	TAPE_HOOK(node, mean, st_dev_base, st_dev_rise_per_meter, st_dev_rise_per_meter_squared, max_incidence_angle);
 	return status;
 }
 
@@ -1544,7 +1579,29 @@ void TapeCore::tape_node_gaussian_noise_distance(const YAML::Node& yamlNode, Pla
 {
 	auto nodeId = yamlNode[0].as<TapeAPIObjectID>();
 	rgl_node_t node = state.nodes.contains(nodeId) ? state.nodes.at(nodeId) : nullptr;
-	rgl_node_gaussian_noise_distance(&node, yamlNode[1].as<float>(), yamlNode[2].as<float>(), yamlNode[3].as<float>());
+	rgl_node_gaussian_noise_distance(&node, yamlNode[1].as<float>(), yamlNode[2].as<float>(), yamlNode[3].as<float>(),
+	                                 yamlNode[4].as<float>(), yamlNode[5].as<float>());
+	state.nodes.insert({nodeId, node});
+}
+
+RGL_API rgl_status_t rgl_node_gaussian_noise_ray_direction(rgl_node_t* node, float st_dev)
+{
+	auto status = rglSafeCall([&]() {
+		RGL_API_LOG("rgl_node_gaussian_noise_ray_direction(node={}, st_dev={})", repr(node), st_dev);
+		CHECK_ARG(node != nullptr);
+		CHECK_ARG(st_dev >= 0);
+
+		createOrUpdateNode<GaussianNoiseRayDirectionNode>(node, st_dev);
+	});
+	TAPE_HOOK(node, st_dev);
+	return status;
+}
+
+void TapeCore::tape_node_gaussian_noise_ray_direction(const YAML::Node& yamlNode, PlaybackState& state)
+{
+	auto nodeId = yamlNode[0].as<TapeAPIObjectID>();
+	rgl_node_t node = state.nodes.contains(nodeId) ? state.nodes.at(nodeId) : nullptr;
+	rgl_node_gaussian_noise_ray_direction(&node, yamlNode[1].as<float>());
 	state.nodes.insert({nodeId, node});
 }
 

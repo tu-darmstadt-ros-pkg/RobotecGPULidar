@@ -93,7 +93,7 @@ struct GaussianPoseIndependentTest : public RGLTest
 
 TEST_F(GaussianPoseIndependentTest, GaussianNoiseDistance)
 {
-	ASSERT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&noise, MEAN, 0.0f, 0.0f));
+	ASSERT_RGL_SUCCESS(rgl_node_gaussian_noise_distance(&noise, MEAN, 0.0f, 0.0f, 0.0f, static_cast<float>(M_PI_2)));
 
 	// Connect nodes into graph
 	ASSERT_RGL_SUCCESS(rgl_graph_node_add_child(useRays, lidarPose));

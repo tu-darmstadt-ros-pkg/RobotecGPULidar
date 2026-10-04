@@ -47,22 +47,54 @@ __global__ void kAddGaussianNoiseAngularHitpoint(size_t pointCount, float mean, 
 }
 
 __global__ void kAddGaussianNoiseDistance(size_t pointCount, float mean, float stDevBase, float stDevRisePerMeter,
+                                          float stDevRisePerMeterSquared, float maxIncidenceAngle,
                                           Mat3x4f lookAtOriginTransform, curandStatePhilox4_32_10_t* randomStates,
                                           const Field<XYZ_VEC3_F32>::type* inPoints,
-                                          const Field<DISTANCE_F32>::type* inDistances, Field<XYZ_VEC3_F32>::type* outPoints,
-                                          Field<DISTANCE_F32>::type* outDistances)
+                                          const Field<DISTANCE_F32>::type* inDistances, const Field<IS_HIT_I32>::type* inIsHit,
+                                          const Field<INCIDENT_ANGLE_F32>::type* inIncidentAngles,
+                                          Field<XYZ_VEC3_F32>::type* outPoints, Field<DISTANCE_F32>::type* outDistances,
+                                          Field<IS_HIT_I32>::type* outIsHit)
 {
 	LIMIT(pointCount);
 
-	float distanceInducedStDev = inDistances[tid] * stDevRisePerMeter;
-	float totalStDev = distanceInducedStDev + stDevBase;
-	float distanceError = mean + curand_normal(&randomStates[tid]) * totalStDev;
+	outIsHit[tid] = inIsHit[tid];
+	if (!inIsHit[tid]) {
+		outPoints[tid] = inPoints[tid];
+		outDistances[tid] = inDistances[tid];
+		return;
+	}
+
+	float cosIncidentAngle = 1.0f;
+	if (inIncidentAngles != nullptr) {
+		if (inIncidentAngles[tid] > maxIncidenceAngle) {
+			outIsHit[tid] = 0;
+			outPoints[tid] = Vec3f{NAN, NAN, NAN};
+			outDistances[tid] = NAN;
+			return;
+		}
+		cosIncidentAngle = cosf(inIncidentAngles[tid]);
+	}
+
+	const float distance = inDistances[tid];
+	const float totalStDev = (stDevBase + stDevRisePerMeter * distance + stDevRisePerMeterSquared * distance * distance) /
+	                         cosIncidentAngle;
+	const float distanceError = mean + curand_normal(&randomStates[tid]) * totalStDev;
 
 	Field<XYZ_VEC3_F32>::type pointInRayOriginTransform = lookAtOriginTransform * inPoints[tid];
 
 	outPoints[tid] = lookAtOriginTransform.inverse() *
 	                 (pointInRayOriginTransform + pointInRayOriginTransform.normalized() * distanceError);
-	outDistances[tid] = inDistances[tid] + distanceError;
+	outDistances[tid] = distance + distanceError;
+}
+
+__global__ void kAddGaussianNoiseRayDirection(size_t rayCount, float stDev, curandStatePhilox4_32_10_t* randomStates,
+                                              const Mat3x4f* inRays, Mat3x4f* outRays)
+{
+	LIMIT(rayCount);
+
+	// A ray points along its z; it tilts about its x and y.
+	const float2 tilt = curand_normal2(&randomStates[tid]);
+	outRays[tid] = inRays[tid] * Mat3x4f::rotationRad(tilt.x * stDev, tilt.y * stDev, 0.0f);
 }
 
 void gpuAddGaussianNoiseAngularRay(cudaStream_t stream, size_t rayCount, float mean, float stDev, rgl_axis_t rotationAxis,
@@ -83,10 +115,19 @@ void gpuAddGaussianNoiseAngularHitpoint(cudaStream_t stream, size_t pointCount, 
 }
 
 void gpuAddGaussianNoiseDistance(cudaStream_t stream, size_t pointCount, float mean, float stDevBase, float stDevRisePerMeter,
-                                 Mat3x4f lookAtOriginTransform, curandStatePhilox4_32_10_t* randomStates,
-                                 const Field<XYZ_VEC3_F32>::type* inPoints, const Field<DISTANCE_F32>::type* inDistances,
-                                 Field<XYZ_VEC3_F32>::type* outPoints, Field<DISTANCE_F32>::type* outDistances)
+                                 float stDevRisePerMeterSquared, float maxIncidenceAngle, Mat3x4f lookAtOriginTransform,
+                                 curandStatePhilox4_32_10_t* randomStates, const Field<XYZ_VEC3_F32>::type* inPoints,
+                                 const Field<DISTANCE_F32>::type* inDistances, const Field<IS_HIT_I32>::type* inIsHit,
+                                 const Field<INCIDENT_ANGLE_F32>::type* inIncidentAngles, Field<XYZ_VEC3_F32>::type* outPoints,
+                                 Field<DISTANCE_F32>::type* outDistances, Field<IS_HIT_I32>::type* outIsHit)
 {
-	run(kAddGaussianNoiseDistance, stream, pointCount, mean, stDevBase, stDevRisePerMeter, lookAtOriginTransform, randomStates,
-	    inPoints, inDistances, outPoints, outDistances);
+	run(kAddGaussianNoiseDistance, stream, pointCount, mean, stDevBase, stDevRisePerMeter, stDevRisePerMeterSquared,
+	    maxIncidenceAngle, lookAtOriginTransform, randomStates, inPoints, inDistances, inIsHit, inIncidentAngles, outPoints,
+	    outDistances, outIsHit);
+}
+
+void gpuAddGaussianNoiseRayDirection(cudaStream_t stream, size_t rayCount, float stDev,
+                                     curandStatePhilox4_32_10_t* randomStates, const Mat3x4f* inRays, Mat3x4f* outRays)
+{
+	run(kAddGaussianNoiseRayDirection, stream, rayCount, stDev, randomStates, inRays, outRays);
 }

@@ -26,6 +26,10 @@ void gpuAddGaussianNoiseAngularHitpoint(cudaStream_t stream, size_t pointCount, 
                                         curandStatePhilox4_32_10_t* randomStates, const Field<XYZ_VEC3_F32>::type* inPoints,
                                         Field<XYZ_VEC3_F32>::type* outPoints, Field<DISTANCE_F32>::type* outDistances);
 void gpuAddGaussianNoiseDistance(cudaStream_t stream, size_t pointCount, float mean, float stDevBase, float stDevRisePerMeter,
-                                 Mat3x4f lookAtOriginTransform, curandStatePhilox4_32_10_t* randomStates,
-                                 const Field<XYZ_VEC3_F32>::type* inPoints, const Field<DISTANCE_F32>::type* inDistances,
-                                 Field<XYZ_VEC3_F32>::type* outPoints, Field<DISTANCE_F32>::type* outDistances);
+                                 float stDevRisePerMeterSquared, float maxIncidenceAngle, Mat3x4f lookAtOriginTransform,
+                                 curandStatePhilox4_32_10_t* randomStates, const Field<XYZ_VEC3_F32>::type* inPoints,
+                                 const Field<DISTANCE_F32>::type* inDistances, const Field<IS_HIT_I32>::type* inIsHit,
+                                 const Field<INCIDENT_ANGLE_F32>::type* inIncidentAngles, Field<XYZ_VEC3_F32>::type* outPoints,
+                                 Field<DISTANCE_F32>::type* outDistances, Field<IS_HIT_I32>::type* outIsHit);
+void gpuAddGaussianNoiseRayDirection(cudaStream_t stream, size_t rayCount, float stDev,
+                                     curandStatePhilox4_32_10_t* randomStates, const Mat3x4f* inRays, Mat3x4f* outRays);

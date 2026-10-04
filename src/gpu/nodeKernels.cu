@@ -345,6 +345,63 @@ __global__ void kFilterGroundPoints(size_t pointCount, const Vec3f sensor_up_vec
 	outNonGround[tid] = normalUpAngle > ground_angle_threshold;
 }
 
+__global__ void kFindStereoUnseenPoints(size_t rowCount, int width, float focalBaseline, bool secondTowardsHigherColumns,
+                                        Vec3f opticalAxis, Mat3x4f lookAtOriginTransform,
+                                        const Field<XYZ_VEC3_F32>::type* inPoints, const Field<IS_HIT_I32>::type* inIsHit,
+                                        int8_t* outUnseen)
+{
+	LIMIT(rowCount);
+
+	// In columns counted towards the second camera, a point at column u with disparity d appears at u - d in the second
+	// image. Walking from the second camera's side, a point is unseen when one passed before (lying towards the second
+	// camera) appears left of it there, or when it falls outside the second image.
+	float leftmostProjection = INFINITY;
+	for (int step = 0; step < width; ++step) {
+		const int column = secondTowardsHigherColumns ? width - 1 - step : step;
+		const int index = static_cast<int>(tid) * width + column;
+		outUnseen[index] = 0;
+		if (!inIsHit[index]) {
+			continue;
+		}
+		const float depth = (lookAtOriginTransform * inPoints[index]).dot(opticalAxis);
+		if (!(depth > 0.0f)) {
+			continue;
+		}
+		const float projection = static_cast<float>(width - 1 - step) - focalBaseline / depth;
+		outUnseen[index] = projection > leftmostProjection || projection < -0.5f;
+		leftmostProjection = fminf(leftmostProjection, projection);
+	}
+}
+
+__global__ void kRemoveStereoUnseenPoints(size_t pointCount, int width, int matchingBand, const int8_t* inUnseen,
+                                          const Field<XYZ_VEC3_F32>::type* inPoints,
+                                          const Field<DISTANCE_F32>::type* inDistances, const Field<IS_HIT_I32>::type* inIsHit,
+                                          Field<XYZ_VEC3_F32>::type* outPoints, Field<DISTANCE_F32>::type* outDistances,
+                                          Field<IS_HIT_I32>::type* outIsHit)
+{
+	LIMIT(pointCount);
+
+	const int height = static_cast<int>(pointCount) / width;
+	const int row = static_cast<int>(tid) / width;
+	const int column = static_cast<int>(tid) % width;
+	bool unseen = false;
+	for (int r = max(row - matchingBand, 0); r <= min(row + matchingBand, height - 1) && !unseen; ++r) {
+		for (int c = max(column - matchingBand, 0); c <= min(column + matchingBand, width - 1) && !unseen; ++c) {
+			unseen = inUnseen[r * width + c] != 0;
+		}
+	}
+
+	if (unseen && inIsHit[tid]) {
+		outIsHit[tid] = 0;
+		outPoints[tid] = Vec3f{NAN, NAN, NAN};
+		outDistances[tid] = NAN;
+		return;
+	}
+	outIsHit[tid] = inIsHit[tid];
+	outPoints[tid] = inPoints[tid];
+	outDistances[tid] = inDistances[tid];
+}
+
 __global__ void kReduceDivergentBeams(size_t beamCount, int samplesPerBeam, rgl_return_mode_t returnMode,
                                       const RaytraceRequestContext* ctx)
 {
@@ -496,6 +553,24 @@ void gpuFilterGroundPoints(cudaStream_t stream, size_t pointCount, const Vec3f s
 {
 	run(kFilterGroundPoints, stream, pointCount, sensor_up_vector, ground_angle_threshold, inPoints, inNormalsPtr, outNonGround,
 	    lidarTransform);
+}
+
+void gpuFindStereoUnseenPoints(cudaStream_t stream, size_t rowCount, int width, float focalBaseline,
+                               bool secondTowardsHigherColumns, Vec3f opticalAxis, Mat3x4f lookAtOriginTransform,
+                               const Field<XYZ_VEC3_F32>::type* inPoints, const Field<IS_HIT_I32>::type* inIsHit,
+                               int8_t* outUnseen)
+{
+	run(kFindStereoUnseenPoints, stream, rowCount, width, focalBaseline, secondTowardsHigherColumns, opticalAxis,
+	    lookAtOriginTransform, inPoints, inIsHit, outUnseen);
+}
+
+void gpuRemoveStereoUnseenPoints(cudaStream_t stream, size_t pointCount, int width, int matchingBand, const int8_t* inUnseen,
+                                 const Field<XYZ_VEC3_F32>::type* inPoints, const Field<DISTANCE_F32>::type* inDistances,
+                                 const Field<IS_HIT_I32>::type* inIsHit, Field<XYZ_VEC3_F32>::type* outPoints,
+                                 Field<DISTANCE_F32>::type* outDistances, Field<IS_HIT_I32>::type* outIsHit)
+{
+	run(kRemoveStereoUnseenPoints, stream, pointCount, width, matchingBand, inUnseen, inPoints, inDistances, inIsHit, outPoints,
+	    outDistances, outIsHit);
 }
 
 void gpuRadarComputeEnergy(cudaStream_t stream, size_t count, float rayAzimuthStepRad, float rayElevationStepRad, float freq,
